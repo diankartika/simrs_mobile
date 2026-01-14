@@ -1,18 +1,25 @@
 // lib/main.dart
-// FIXED - All warnings removed
+// FIXED - All errors removed
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'models/user_model.dart';
 import 'providers/auth_provider.dart';
+import 'services/icd_database_service.dart';
 import 'screens/login_screen.dart';
-import 'screens/home/admin/admin_home.dart';
+import 'screens/home/admin_home.dart';
 import 'screens/home/doctor_home.dart';
 import 'screens/home/coder_home.dart';
 import 'screens/home/auditor_home.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  // Sync ICD codes to Firestore on first run
+  await ICDDatabaseService().syncMockDataToFirestore();
+
   runApp(const MyApp());
 }
 
