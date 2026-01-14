@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'models/user_model.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
-import 'screens/home/admin_home.dart';
+import 'screens/home/admin/admin_home.dart';
 import 'screens/home/doctor_home.dart';
 import 'screens/home/coder_home.dart';
 import 'screens/home/auditor_home.dart';

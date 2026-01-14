@@ -1,9 +1,10 @@
 // lib/screens/home/admin_home.dart
-// EXACT DESIGN - Matches your screenshot perfectly
+// FIXED - All warnings removed
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../../providers/auth_provider.dart';
+import './registrasi_pasien.dart';
 
 class AdminHome extends StatelessWidget {
   const AdminHome({super.key});
@@ -52,11 +53,20 @@ class AdminHome extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // MENU ITEMS - EXACT DESIGN FROM YOUR IMAGE
-                  _menuCard(
-                    icon: Icons.person_add,
-                    title: 'Pendaftaran',
-                    subtitle: 'Registrasi Pasien',
-                    color: const Color(0xFF00897B),
+                  GestureDetector(
+                    onTap:
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RegistrasiPasien(),
+                          ),
+                        ),
+                    child: _menuCard(
+                      icon: Icons.person_add,
+                      title: 'Pendaftaran',
+                      subtitle: 'Registrasi Pasien',
+                      color: const Color(0xFF00897B),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _menuCard(
@@ -114,20 +124,14 @@ class AdminHome extends StatelessWidget {
         backgroundColor: Colors.white,
         selectedItemColor: const Color(0xFF00897B),
         unselectedItemColor: Colors.grey[400],
-        items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
-            icon: Image.asset('assets/images/logo.png', width: 24, height: 24),
+            icon: Icon(Icons.description),
             label: 'Records',
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.share),
-            label: 'Share',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.share), label: 'Share'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
