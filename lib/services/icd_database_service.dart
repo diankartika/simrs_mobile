@@ -85,17 +85,15 @@ class ICDDatabaseService {
     ICDCode(code: '86.04', description: 'Debridement of wound, infection'),
   ];
 
-  // ============ FETCH ICD-10 CODES ============
   Future<List<ICDCode>> searchICD10(String query) async {
     try {
-      // First try Firestore
       final snapshot =
           await _firestore
               .collection('icd_codes')
               .doc('icd10')
               .collection('codes')
               .where('code', isGreaterThanOrEqualTo: query.toUpperCase())
-              .where('code', isLessThan: query.toUpperCase() + 'z')
+              .where('code', isLessThan: '${query.toUpperCase()}z')
               .limit(20)
               .get();
 
@@ -131,7 +129,7 @@ class ICDDatabaseService {
               .doc('icd9cm')
               .collection('codes')
               .where('code', isGreaterThanOrEqualTo: query.toUpperCase())
-              .where('code', isLessThan: query.toUpperCase() + 'z')
+              .where('code', isLessThan: '${query.toUpperCase()}z')
               .limit(20)
               .get();
 

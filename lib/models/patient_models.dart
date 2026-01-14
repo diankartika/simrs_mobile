@@ -115,7 +115,7 @@ class Patient {
 
 // ============ RME FORM MODEL ============
 
-class RMEForm {
+class RMEModel {
   final String id;
   final String patientId;
   final String keluhanUtama;
@@ -128,7 +128,7 @@ class RMEForm {
   final DateTime createdAt;
   final String status; // draft, completed, sent_to_coder
 
-  RMEForm({
+  RMEModel({
     required this.id,
     required this.patientId,
     required this.keluhanUtama,
@@ -157,9 +157,9 @@ class RMEForm {
     };
   }
 
-  factory RMEForm.fromFirestore(DocumentSnapshot doc) {
+  factory RMEModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    return RMEForm(
+    return RMEModel(
       id: doc.id,
       patientId: data['patientId'] ?? '',
       keluhanUtama: data['keluhanUtama'] ?? '',
@@ -174,7 +174,7 @@ class RMEForm {
     );
   }
 
-  RMEForm copyWith({
+  RMEModel copyWith({
     String? id,
     String? patientId,
     String? keluhanUtama,
@@ -187,7 +187,7 @@ class RMEForm {
     DateTime? createdAt,
     String? status,
   }) {
-    return RMEForm(
+    return RMEModel(
       id: id ?? this.id,
       patientId: patientId ?? this.patientId,
       keluhanUtama: keluhanUtama ?? this.keluhanUtama,
