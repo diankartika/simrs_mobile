@@ -61,6 +61,22 @@ class Patient {
   // From Firestore
   factory Patient.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
+    // ✅ Helper to safely parse ServiceType
+    ServiceType _parseServiceType(String? value) {
+      if (value == null || value.isEmpty) return ServiceType.rajal;
+
+      final normalized = value.toLowerCase();
+      try {
+        return ServiceType.values.firstWhere(
+          (e) => e.name == normalized,
+          orElse: () => ServiceType.rajal,
+        );
+      } catch (e) {
+        return ServiceType.rajal; // ← Default fallback
+      }
+    }
+
     return Patient(
       id: doc.id,
       rmNumber: data['rmNumber'] ?? '',
@@ -72,9 +88,7 @@ class Patient {
       phone: data['phone'] ?? '',
       education: data['education'] ?? '',
       insurance: data['insurance'] ?? '',
-      serviceType: ServiceType.values.firstWhere(
-        (e) => e.name == data['serviceType'],
-      ),
+      serviceType: _parseServiceType(data['serviceType'] as String?),
       registrationDate: (data['registrationDate'] as Timestamp).toDate(),
       status: data['status'] ?? 'active',
     );
