@@ -1,3 +1,5 @@
+// lib/screens/home/coder_home.dart
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/patient_models.dart';
@@ -17,12 +19,10 @@ class _CoderHomeState extends State<CoderHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: _buildBody(),
+      body: _currentIndex == 0 ? _codingQueue() : const ProfileScreen(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         selectedItemColor: const Color(0xFF00897B),
-        unselectedItemColor: Colors.grey,
         onTap: (i) => setState(() => _currentIndex = i),
         items: const [
           BottomNavigationBarItem(
@@ -35,31 +35,17 @@ class _CoderHomeState extends State<CoderHome> {
     );
   }
 
-  Widget _buildBody() {
-    switch (_currentIndex) {
-      case 0:
-        return _buildCodingQueue();
-      case 1:
-        return const ProfileScreen();
-      default:
-        return _buildCodingQueue();
-    }
-  }
-
   // ================= CODING QUEUE =================
 
-  Widget _buildCodingQueue() {
+  Widget _codingQueue() {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Antrian Pengkodean Medis',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -67,15 +53,11 @@ class _CoderHomeState extends State<CoderHome> {
             FirebaseFirestore.instance
                 .collection('rme_forms')
                 .where('status', isEqualTo: 'completed')
-                .orderBy('createdAt', descending: false)
+                .orderBy('createdAt')
                 .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(Color(0xFF00897B)),
-              ),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -120,27 +102,23 @@ class _CoderHomeState extends State<CoderHome> {
             left: BorderSide(color: const Color(0xFF00897B), width: 4),
           ),
           borderRadius: BorderRadius.circular(8),
-          color: const Color(0xFF00897B).withValues(alpha: 0.05),
+          color: const Color(0xFF00897B).withOpacity(0.05),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'No. RM: ${rme['rmNumber']}',
+              'No. RM: ${rme['rmNumber'] ?? '-'}',
               style: const TextStyle(
-                fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF00897B),
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              'Nama: ${rme['patientName']}',
-              style: const TextStyle(fontSize: 13),
-            ),
+            Text('Nama: ${rme['patientName'] ?? '-'}'),
             const SizedBox(height: 4),
             Text(
-              'Diagnosis: ${rme['diagnosis']}',
+              'Diagnosis: ${rme['diagnosis'] ?? '-'}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 12, color: Colors.black54),
@@ -152,26 +130,13 @@ class _CoderHomeState extends State<CoderHome> {
   }
 
   Widget _emptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.assignment_outlined, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'Tidak ada dokumen RME\nuntuk dikodekan',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-          ],
-        ),
+    return const Center(
+      child: Text(
+        'Tidak ada RME yang perlu dikodekan',
+        style: TextStyle(color: Colors.grey),
       ),
     );
   }
-
-  // ================= HELPER =================
 
   Future<Patient?> _getPatient(String patientId) async {
     try {

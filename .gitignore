@@ -43,3 +43,20 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ===============================
+# 🔐 Firebase Admin / Seeding
+# ===============================
+
+# Service account key (VERY SENSITIVE)
+firestore/serviceAccountKey.json
+**/serviceAccountKey.json
+
+# Node.js (seeding scripts)
+firestore/node_modules/
+**/node_modules/
+
+# Node env files
+.env
+.env.local
+.env.production
