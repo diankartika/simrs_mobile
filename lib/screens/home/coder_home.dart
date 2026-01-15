@@ -1,11 +1,12 @@
-// lib/screens/home/coder_home.dart - FINAL VERSION
-// All errors fixed, UI matches screenshots with role-based design
+// lib/screens/home/coder_home.dart - FIXED VERSION
+// Now shows patient data + coding queue
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/patient_models.dart';
 import '../../services/queue_service.dart';
 import './pengkodean_form.dart';
+import './patient_list_universal.dart';
 import '../profile_screen.dart';
 
 class CoderHome extends StatefulWidget {
@@ -89,214 +90,193 @@ class _CoderHomeState extends State<CoderHome> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: StreamBuilder<List<QueueItem>>(
-          stream: queueService.getCoderCodingQueue(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00897B)),
-                ),
-              );
-            }
-
-            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.assignment_outlined,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Tidak ada pengkodean',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                      ),
-                    ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // âœ… ADD: QUICK ACCESS TO PATIENT DATA
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PatientListUniversal(),
                   ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFF00897B), width: 2),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              );
-            }
-
-            final items = snapshot.data!;
-            final codingCount = items.length;
-            final reviewCount = 4; // Example count
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // TOP CARDS - Menunggu Pengkodean & Perlu Review
-                Row(
+                child: Row(
                   children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color(0xFF00897B),
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF00897B,
-                                    ).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Icon(
-                                    Icons.healing,
-                                    size: 20,
-                                    color: Color(0xFF00897B),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Menunggu\nPengkodean',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ],
-                        ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00897B).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color(0xFF00897B),
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF00897B,
-                                    ).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    size: 20,
-                                    color: Color(0xFF00897B),
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  child: Text(
-                                    codingCount.toString(),
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF00897B),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Perlu Review',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Padding(
-                      padding: EdgeInsets.only(top: 24),
-                      child: Icon(
-                        Icons.chevron_right,
+                      child: const Icon(
+                        Icons.people,
+                        size: 20,
                         color: Color(0xFF00897B),
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Lihat Data Pasien',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF00897B),
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Akses data semua pasien untuk pengkodean',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Color(0xFF00897B)),
                   ],
                 ),
-                const SizedBox(height: 24),
+              ),
+            ),
+            const SizedBox(height: 24),
 
-                // CODING ICD SECTION
-                const Text(
-                  'Koding ICD',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
+            // PENGKODEAN QUEUE
+            const Text(
+              'Antrian Pengkodean',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // QUEUE COUNTER
+            StreamBuilder<List<QueueItem>>(
+              stream: queueService.getCoderCodingQueue(),
+              builder: (context, snapshot) {
+                final codingCount =
+                    snapshot.hasData ? snapshot.data!.length : 0;
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
-                ),
-                const SizedBox(height: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: const Color(0xFF00897B),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Dokumen yang\nPerlu Dikodekan',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00897B),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          codingCount.toString(),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
 
-                // QUEUE LIST
-                for (var item in items)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: FutureBuilder<Patient?>(
-                      future: _getPatientData(item.patientId),
-                      builder: (context, patientSnapshot) {
-                        if (!patientSnapshot.hasData) {
-                          return Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                left: BorderSide(
-                                  color: const Color(0xFF00897B),
-                                  width: 4,
-                                ),
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                              color: const Color(
-                                0xFF00897B,
-                              ).withValues(alpha: 0.05),
+            // QUEUE LIST
+            StreamBuilder<List<QueueItem>>(
+              stream: queueService.getCoderCodingQueue(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFF00897B),
+                      ),
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.assignment_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Tidak ada pengkodean',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
                             ),
-                            child: const CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF00897B),
-                              ),
-                            ),
-                          );
-                        }
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
 
-                        final patient = patientSnapshot.data;
-                        if (patient == null) {
-                          return const SizedBox();
-                        }
+                final items = snapshot.data!;
 
-                        return GestureDetector(
-                          onTap: () {
-                            if (mounted) {
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: GestureDetector(
+                        onTap: () {
+                          _getPatientData(item.patientId).then((patient) {
+                            if (patient != null && mounted) {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -308,225 +288,60 @@ class _CoderHomeState extends State<CoderHome> {
                                 ),
                               );
                             }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                left: BorderSide(
-                                  color: const Color(0xFF00897B),
-                                  width: 4,
-                                ),
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              left: BorderSide(
+                                color: const Color(0xFF00897B),
+                                width: 4,
                               ),
-                              borderRadius: BorderRadius.circular(8),
-                              color: const Color(
-                                0xFF00897B,
-                              ).withValues(alpha: 0.05),
                             ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'No. RM Pasien  : ${item.rmNumber} (Laki-laki)',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF00897B),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Nama Pasien  : ${item.patientName}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Tgl. Kunjungan: ${_formatDate(DateTime.now())} (1 hari lalu)',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.black54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(
-                                  Icons.chevron_right,
+                            borderRadius: BorderRadius.circular(8),
+                            color: const Color(
+                              0xFF00897B,
+                            ).withValues(alpha: 0.05),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'No. RM: ${item.rmNumber}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
                                   color: Color(0xFF00897B),
                                 ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Nama: ${item.patientName}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Tgl. Kunjungan: ${_formatDate(DateTime.now())} (1 hari lalu)',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                    ),
-                  ),
-
-                const SizedBox(height: 16),
-
-                // LIHAT SEMUA BUTTON
-                Center(
-                  child: SizedBox(
-                    height: 40,
-                    child: ElevatedButton.icon(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00897B),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
                         ),
                       ),
-                      icon: const Text(
-                        'Lihat Semua',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      label: const Icon(
-                        Icons.chevron_right,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // STATISTICS SECTION
-                const Text(
-                  'Statistik',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: const Color(0xFF00897B),
-                      width: 1,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Top 5 Kode ICD-10 Hari Ini',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF00897B),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildStatItem(
-                        '1. I10 - Hipertensi Essensial',
-                        '5 Kasus',
-                      ),
-                      _buildStatItem(
-                        '2. TB14 - Infeksi Luka Operasi',
-                        '2 Kasus',
-                      ),
-                      _buildStatItem(
-                        '3. K35.8 - Appendisitis Akut Non-Spesifik',
-                        '1 Kasus',
-                      ),
-                      _buildStatItem(
-                        '4. J06.9 - Infeksi Saluran Napas Akut',
-                        '1 Kasus',
-                      ),
-                      _buildStatItem(
-                        '5. N39.0 - Infeksi Saluran Kemih',
-                        '1 Kasus',
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // LIHAT SEMUA BUTTON
-                Center(
-                  child: SizedBox(
-                    height: 40,
-                    child: ElevatedButton.icon(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00897B),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      icon: const Text(
-                        'Lihat Semua',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      label: const Icon(
-                        Icons.chevron_right,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String title, String count) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 12, color: Colors.black87),
+                    );
+                  },
+                );
+              },
             ),
-          ),
-          Row(
-            children: [
-              Text(
-                count,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF00897B),
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.chevron_right,
-                size: 16,
-                color: Color(0xFF00897B),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

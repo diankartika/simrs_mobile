@@ -12,6 +12,7 @@ import '../../models/patient_models.dart';
 import '../profile_screen.dart';
 import 'rme_form.dart';
 import 'rme_history.dart';
+import './patient_list_universal.dart';
 
 class DoctorHome extends StatefulWidget {
   const DoctorHome({super.key});
@@ -112,7 +113,7 @@ class _DoctorHomeState extends State<DoctorHome> {
       case 0:
         return _buildRMEQueue();
       case 1:
-        return const RMEHistory();
+        return const RMEHistory(role: 'doctor');
       case 2:
         return const ProfileScreen();
       default:
@@ -144,7 +145,6 @@ class _DoctorHomeState extends State<DoctorHome> {
                       color: Colors.black,
                     ),
                   ),
-                  // ✅ COUNTER BADGE
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -152,10 +152,10 @@ class _DoctorHomeState extends State<DoctorHome> {
                     ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF00897B),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '$queueCount Pasien',
+                      '$queueCount pasien',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -168,8 +168,73 @@ class _DoctorHomeState extends State<DoctorHome> {
             },
           ),
           const SizedBox(height: 16),
+          const Text(
+            'Akses Cepat',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PatientListUniversal(),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFF00897B), width: 2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00897B).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.people,
+                      size: 20,
+                      color: Color(0xFF00897B),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Lihat Data Pasien',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF00897B),
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Akses data semua pasien terdaftar',
+                          style: TextStyle(fontSize: 11, color: Colors.black54),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Color(0xFF00897B)),
+                ],
+              ),
+            ),
+          ),
 
           // RME QUEUE LIST
+          const SizedBox(height: 16),
           StreamBuilder<List<QueueItem>>(
             stream: queueService.getDoctorRMEQueue(),
             builder: (context, snapshot) {

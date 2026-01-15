@@ -44,7 +44,7 @@ void main() async {
     final hasData = await importService.hasExistingData();
 
     if (!hasData) {
-      debugPrint('📥 First launch detected - importing 28 records...');
+      debugPrint('🔥 First launch detected - importing 28 records...');
       await importService.importAllStudyCases();
       debugPrint('✅ Import complete!');
     } else {

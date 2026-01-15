@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/patient_models.dart';
 import '../../services/queue_service.dart';
+import '../../services/history_service.dart';
 
 class AuditFormScreen extends StatefulWidget {
   final QueueItem queueItem;
@@ -46,10 +47,10 @@ class _AuditFormScreenState extends State<AuditFormScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Save Audit Form to Firestore
       final auditFormData = {
         'queueItemId': widget.queueItem.id,
         'patientId': widget.patient.id,
+        'patientName': widget.patient.name,
         'checklist': _checklist.map((c) => c.toMap()).toList(),
         'notes': _notesCtrl.text,
         'auditorName': 'Auditor HIM',
@@ -61,7 +62,16 @@ class _AuditFormScreenState extends State<AuditFormScreen> {
           .collection('audit_forms')
           .add(auditFormData);
 
-      // Complete the queue item
+      // ✅ WAJIB: ADD HISTORY (PAKAI SERVICE)
+      await HistoryService.add(
+        patientId: widget.patient.id,
+        patientName: widget.patient.name,
+        role: 'auditor',
+        action: 'Validasi & Finalisasi Rekam Medis',
+        status: 'approved',
+      );
+
+      // Complete queue
       await QueueService().completeQueueItem(widget.queueItem.id);
 
       if (mounted) {
@@ -80,7 +90,9 @@ class _AuditFormScreenState extends State<AuditFormScreen> {
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

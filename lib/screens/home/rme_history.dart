@@ -1,20 +1,22 @@
-// lib/screens/home/rme_history.dart - RME FORM HISTORY
-// Shows all completed RME forms by doctor with search, filter, and detail view
+// lib/screens/home/rme_history.dart
+// FINAL VERSION - History Log based on `histories` collection
+// Used by doctor / coder / auditor via role filter
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../models/patient_models.dart';
 
 class RMEHistory extends StatefulWidget {
-  const RMEHistory({super.key});
+  final String role; // doctor | coder | auditor
+
+  const RMEHistory({super.key, required this.role});
 
   @override
   State<RMEHistory> createState() => _RMEHistoryState();
 }
 
 class _RMEHistoryState extends State<RMEHistory> {
-  final _searchCtrl = TextEditingController();
-  String _selectedFilter = 'semua'; // semua, 7hari, 30hari
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _selectedFilter = 'semua'; // semua | 7hari | 30hari
 
   @override
   void dispose() {
@@ -22,42 +24,31 @@ class _RMEHistoryState extends State<RMEHistory> {
     super.dispose();
   }
 
-  Future<Patient?> _getPatientData(String patientId) async {
-    try {
-      final doc =
-          await FirebaseFirestore.instance
-              .collection('patients')
-              .doc(patientId)
-              .get();
-      if (doc.exists) {
-        return Patient.fromFirestore(doc);
-      }
-    } catch (e) {
-      // Silent
-    }
-    return null;
-  }
-
-  Query _getFilteredQuery() {
+  /// 🔹 Base query for histories
+  Query _baseQuery() {
     Query query = FirebaseFirestore.instance
-        .collection('rme_forms')
-        .where('status', isEqualTo: 'completed')
+        .collection('histories')
+        .where('role', isEqualTo: widget.role)
         .orderBy('createdAt', descending: true);
 
     if (_selectedFilter == '7hari') {
-      final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
-      query = query.where('createdAt', isGreaterThan: sevenDaysAgo);
+      final sevenDaysAgo = Timestamp.fromDate(
+        DateTime.now().subtract(const Duration(days: 7)),
+      );
+      query = query.where('createdAt', isGreaterThanOrEqualTo: sevenDaysAgo);
     } else if (_selectedFilter == '30hari') {
-      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
-      query = query.where('createdAt', isGreaterThan: thirtyDaysAgo);
+      final thirtyDaysAgo = Timestamp.fromDate(
+        DateTime.now().subtract(const Duration(days: 30)),
+      );
+      query = query.where('createdAt', isGreaterThanOrEqualTo: thirtyDaysAgo);
     }
 
     return query;
   }
 
-  String _formatDate(Timestamp timestamp) {
-    final date = timestamp.toDate();
-    return '${date.day}/${date.month}/${date.year}';
+  String _formatDate(Timestamp ts) {
+    final d = ts.toDate();
+    return '${d.day}/${d.month}/${d.year}';
   }
 
   @override
@@ -71,7 +62,7 @@ class _RMEHistoryState extends State<RMEHistory> {
           children: [
             // TITLE
             const Text(
-              'Histori RME',
+              'Riwayat Aktivitas',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -84,29 +75,22 @@ class _RMEHistoryState extends State<RMEHistory> {
             TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
-                hintText: 'Cari nama pasien atau RM',
-                hintStyle: TextStyle(color: Colors.grey[500]),
+                hintText: 'Cari nama pasien atau No. RM',
                 prefixIcon: const Icon(Icons.search, color: Color(0xFF00897B)),
                 filled: true,
                 fillColor: const Color(0xFFF5F5F5),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                  borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 12,
                 ),
               ),
-              onChanged: (value) {
-                setState(() {});
-              },
+              onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             // FILTER CHIPS
             SingleChildScrollView(
@@ -125,139 +109,48 @@ class _RMEHistoryState extends State<RMEHistory> {
 
             // HISTORY LIST
             StreamBuilder<QuerySnapshot>(
-              stream: _getFilteredQuery().snapshots(),
+              stream: _baseQuery().snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Color(0xFF00897B),
+                  return const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF00897B),
+                        ),
                       ),
                     ),
                   );
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.history_outlined,
-                            size: 48,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Tidak ada histori RME',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+                  return _emptyState();
                 }
 
-                final docs = snapshot.data!.docs;
-                final searchQuery = _searchCtrl.text.toLowerCase();
-
-                // Filter by search query
-                final filteredDocs =
-                    docs.where((doc) {
-                      final patientName =
-                          (doc['patientName'] as String? ?? '').toLowerCase();
-                      final patientId =
-                          (doc['patientId'] as String? ?? '').toLowerCase();
-                      return patientName.contains(searchQuery) ||
-                          patientId.contains(searchQuery);
+                final search = _searchCtrl.text.toLowerCase();
+                final docs =
+                    snapshot.data!.docs.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final name =
+                          (data['patientName'] ?? '').toString().toLowerCase();
+                      final id =
+                          (data['patientId'] ?? '').toString().toLowerCase();
+                      return name.contains(search) || id.contains(search);
                     }).toList();
 
-                if (filteredDocs.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Text(
-                        'Tidak ada hasil pencarian',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                      ),
-                    ),
-                  );
+                if (docs.isEmpty) {
+                  return _noSearchResult();
                 }
 
                 return ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredDocs.length,
+                  itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    final doc = filteredDocs[index];
-                    final data = doc.data() as Map<String, dynamic>;
+                    final data = docs[index].data() as Map<String, dynamic>;
 
-                    return GestureDetector(
-                      onTap: () {
-                        _showDetailDialog(context, data);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border(
-                              left: BorderSide(
-                                color: const Color(0xFF00897B),
-                                width: 4,
-                              ),
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            color: const Color(
-                              0xFF00897B,
-                            ).withValues(alpha: 0.05),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Nama: ${data['patientName'] ?? '-'}',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF00897B),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'RM: ${data['patientId'] ?? '-'}',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Tanggal: ${_formatDate(data['createdAt'] as Timestamp)}',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(
-                                Icons.chevron_right,
-                                color: Color(0xFF00897B),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
+                    return _buildHistoryCard(data);
                   },
                 );
               },
@@ -267,6 +160,8 @@ class _RMEHistoryState extends State<RMEHistory> {
       ),
     );
   }
+
+  // ===================== UI COMPONENTS =====================
 
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _selectedFilter == value;
@@ -279,124 +174,136 @@ class _RMEHistoryState extends State<RMEHistory> {
         ),
       ),
       selected: isSelected,
-      onSelected: (selected) {
+      onSelected: (_) {
         setState(() => _selectedFilter = value);
       },
       backgroundColor: Colors.transparent,
-      side: BorderSide(color: const Color(0xFF00897B), width: 1.5),
+      side: const BorderSide(color: Color(0xFF00897B), width: 1.5),
       selectedColor: const Color(0xFF00897B),
     );
   }
 
+  Widget _buildHistoryCard(Map<String, dynamic> data) {
+    return GestureDetector(
+      onTap: () => _showDetailDialog(context, data),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: const Border(
+            left: BorderSide(color: Color(0xFF00897B), width: 4),
+          ),
+          borderRadius: BorderRadius.circular(8),
+          color: const Color(0xFF00897B).withValues(alpha: 0.05),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    data['patientName'] ?? '-',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF00897B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'RM: ${data['patientId'] ?? '-'}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    data['action'] ?? '-',
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Chip(
+                  label: Text(
+                    data['status'] ?? '-',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatDate(data['createdAt']),
+                  style: const TextStyle(fontSize: 11, color: Colors.black54),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        children: [
+          Icon(Icons.history, size: 48, color: Colors.grey[400]),
+          const SizedBox(height: 12),
+          Text(
+            'Belum ada riwayat',
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _noSearchResult() {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Text(
+        'Tidak ada hasil pencarian',
+        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+      ),
+    );
+  }
+
+  // ===================== DETAIL DIALOG =====================
+
   void _showDetailDialog(BuildContext context, Map<String, dynamic> data) {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (_) {
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          child: SingleChildScrollView(
+          child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Detail RME',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Icon(Icons.close),
-                    ),
-                  ],
+                const Text(
+                  'Detail Aktivitas',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-
-                // Patient Info
-                _buildDetailRow('Nama Pasien', data['patientName'] ?? '-'),
-                _buildDetailRow('No. RM', data['patientId'] ?? '-'),
-                _buildDetailRow(
-                  'Tanggal',
-                  _formatDate(data['createdAt'] as Timestamp),
-                ),
-                const SizedBox(height: 12),
-
-                // Form Data
-                const Text(
-                  'Keluhan Utama',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey,
-                  ),
-                ),
-                Text(
-                  data['keluhan'] ?? '-',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-
-                const Text(
-                  'Riwayat Penyakit',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey,
-                  ),
-                ),
-                Text(
-                  data['riwayat'] ?? '-',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-
-                const Text(
-                  'Diagnosis',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey,
-                  ),
-                ),
-                Text(
-                  data['diagnosis'] ?? '-',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-
-                const Text(
-                  'Terapi',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey,
-                  ),
-                ),
-                Text(
-                  data['terapi'] ?? '-',
-                  style: const TextStyle(fontSize: 12),
-                ),
+                _detailRow('Nama Pasien', data['patientName']),
+                _detailRow('No. RM', data['patientId']),
+                _detailRow('Aksi', data['action']),
+                _detailRow('Status', data['status']),
+                _detailRow('Tanggal', _formatDate(data['createdAt'])),
                 const SizedBox(height: 20),
-
-                // Close Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF00897B),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: const Text(
@@ -416,23 +323,19 @@ class _RMEHistoryState extends State<RMEHistory> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _detailRow(String label, dynamic value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(label, style: const TextStyle(color: Colors.grey)),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              value,
+              value?.toString() ?? '-',
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ],

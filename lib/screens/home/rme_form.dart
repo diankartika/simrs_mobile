@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/patient_models.dart';
 import '../../services/queue_service.dart';
+import '../../services/history_service.dart';
 
 class RMEForm extends StatefulWidget {
   final QueueItem queueItem;
@@ -40,10 +41,10 @@ class _RMEFormState extends State<RMEForm> {
     setState(() => _isLoading = true);
 
     try {
-      // Save RME Form to Firestore
       final rmeFormData = {
         'queueItemId': widget.queueItem.id,
         'patientId': widget.patient.id,
+        'patientName': widget.patient.name,
         'keluhan': _keluhanCtrl.text,
         'riwayat': _riwayatCtrl.text,
         'diagnosis': _diagnosisCtrl.text,
@@ -55,7 +56,15 @@ class _RMEFormState extends State<RMEForm> {
 
       await FirebaseFirestore.instance.collection('rme_forms').add(rmeFormData);
 
-      // Move queue to audit stage (after doctor fills RME)
+      // ✅ ADD HISTORY (INI KUNCI)
+      await HistoryService.add(
+        patientId: widget.patient.id,
+        patientName: widget.patient.name,
+        role: 'doctor',
+        action: 'Mengisi Rekam Medis Elektronik',
+        status: 'completed',
+      );
+
       await QueueService().moveToNextQueue(
         queueItemId: widget.queueItem.id,
         fromQueue: 'rme',
@@ -63,7 +72,6 @@ class _RMEFormState extends State<RMEForm> {
       );
 
       if (mounted) {
-        // ✅ FIXED: Message says audit (since button says kirim ke auditor)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -86,7 +94,9 @@ class _RMEFormState extends State<RMEForm> {
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
