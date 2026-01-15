@@ -1,4 +1,5 @@
-// lib/screens/home/doctor_home.dart
+// lib/screens/home/doctor_home.dart - 3 TABS ONLY: Home, Histori, Profile
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import '../../models/patient_models.dart';
 import '../../services/queue_service.dart';
 import '../profile_screen.dart';
 import 'rme_form.dart';
+import 'rme_history.dart';
 
 class DoctorHome extends StatefulWidget {
   const DoctorHome({super.key});
@@ -79,10 +81,8 @@ class _DoctorHomeState extends State<DoctorHome> {
             ),
           ],
         ),
-        body:
-            _currentNavIndex == 0
-                ? _buildDoctorHome(context)
-                : const ProfileScreen(),
+        // ✅ FIX: Handle 3 tabs only
+        body: _buildBody(),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentNavIndex,
           type: BottomNavigationBarType.fixed,
@@ -95,10 +95,9 @@ class _DoctorHomeState extends State<DoctorHome> {
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(
-              icon: Icon(Icons.description),
-              label: 'Records',
+              icon: Icon(Icons.history),
+              label: 'Histori',
             ),
-            BottomNavigationBarItem(icon: Icon(Icons.share), label: 'Share'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
@@ -106,7 +105,22 @@ class _DoctorHomeState extends State<DoctorHome> {
     );
   }
 
-  Widget _buildDoctorHome(BuildContext context) {
+  // ✅ FIX: Handle 3 tabs
+  Widget _buildBody() {
+    switch (_currentNavIndex) {
+      case 0:
+        return _buildDoctorHome();
+      case 1:
+        return const RMEHistory();
+      case 2:
+        return const ProfileScreen();
+      default:
+        return _buildDoctorHome();
+    }
+  }
+
+  // Tab 0: Home - Patient Queue
+  Widget _buildDoctorHome() {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
         return SingleChildScrollView(
@@ -231,16 +245,18 @@ class _DoctorHomeState extends State<DoctorHome> {
                           final patient = patientSnapshot.data!;
                           return GestureDetector(
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => RMEForm(
-                                        queueItem: queueItem,
-                                        patient: patient,
-                                      ),
-                                ),
-                              );
+                              if (mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => RMEForm(
+                                          queueItem: queueItem,
+                                          patient: patient,
+                                        ),
+                                  ),
+                                );
+                              }
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 8),

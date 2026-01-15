@@ -1,5 +1,5 @@
-// lib/screens/home/rme_form.dart - FIXED VERSION
-// Fixed: Notification message ke pengkodean (bukan audit langsung)
+// lib/screens/home/rme_form.dart - UI MATCH WITH SCREENSHOTS
+// Fixed: All labels match UI, button says "Kirim ke Auditor"
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -48,26 +48,26 @@ class _RMEFormState extends State<RMEForm> {
         'riwayat': _riwayatCtrl.text,
         'diagnosis': _diagnosisCtrl.text,
         'terapi': _terapiCtrl.text,
-        'doctorName': 'Dr. Budi Santoso',
+        'doctorName': 'Dokter',
         'createdAt': Timestamp.now(),
         'status': 'completed',
       };
 
       await FirebaseFirestore.instance.collection('rme_forms').add(rmeFormData);
 
-      // Move queue to coding stage (NOT directly to audit!)
+      // Move queue to audit stage (after doctor fills RME)
       await QueueService().moveToNextQueue(
         queueItemId: widget.queueItem.id,
         fromQueue: 'rme',
-        toQueue: 'coding',
+        toQueue: 'audit',
       );
 
       if (mounted) {
-        // ✅ FIXED: Message now correctly says "pengkodean" not "audit"
+        // ✅ FIXED: Message says audit (since button says kirim ke auditor)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Data pasien berhasil disimpan dan dalam antrian pengkodean',
+              'Data pasien berhasil disimpan dan dalam antrian audit',
             ),
             backgroundColor: Color(0xFF00897B),
             duration: Duration(seconds: 2),
@@ -77,7 +77,6 @@ class _RMEFormState extends State<RMEForm> {
       }
     } catch (e) {
       if (mounted) {
-        // ✅ FIXED: User-friendly error message (not raw exception)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Terjadi kesalahan saat menyimpan data'),
@@ -136,6 +135,17 @@ class _RMEFormState extends State<RMEForm> {
               ),
               const SizedBox(height: 24),
 
+              // ✅ FIX: "Anamnesis & Fisik" section header
+              const Text(
+                'Anamnesis & Fisik',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 12),
+
               // KELUHAN UTAMA
               const Text(
                 'Keluhan Utama',
@@ -175,9 +185,17 @@ class _RMEFormState extends State<RMEForm> {
               ),
               const SizedBox(height: 16),
 
-              // RIWAYAT PENYAKIT
+              // RIWAYAT PENYAKIT - ✅ FIX: Label updated
               const Text(
                 'Riwayat Penyakit',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+              const Text(
+                'Riwayat Penyakit Sekarang/Dulu',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -214,9 +232,17 @@ class _RMEFormState extends State<RMEForm> {
               ),
               const SizedBox(height: 16),
 
-              // DIAGNOSIS KLINIS
+              // DIAGNOSIS KLINIS - ✅ FIX: Label updated to "(Awal)"
               const Text(
-                'Diagnosis Klinis',
+                'Diagnosis Klinis (Awal)',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+              const Text(
+                'Diagnosis Dokter',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -253,9 +279,17 @@ class _RMEFormState extends State<RMEForm> {
               ),
               const SizedBox(height: 16),
 
-              // RENCANA TATALAKSANA / TERAPI
+              // RENCANA TATALAKSANA - ✅ FIX: Labels updated
               const Text(
-                'Rencana Tatalaksana / Terapi',
+                'Rencana Tatalaksana',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
+                ),
+              ),
+              const Text(
+                'Terapi/Tindakan',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -292,42 +326,99 @@ class _RMEFormState extends State<RMEForm> {
               ),
               const SizedBox(height: 32),
 
-              // SUBMIT BUTTON
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submitForm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00897B),
-                    disabledBackgroundColor: Colors.grey[400],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+              // ✅ FIX: Two buttons - Kembali & Kirim ke Auditor
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(
+                          color: Color(0xFF00897B),
+                          width: 2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text(
+                        'Kembali',
+                        style: TextStyle(
+                          color: Color(0xFF00897B),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
-                    elevation: 0,
                   ),
-                  child:
-                      _isLoading
-                          ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _submitForm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00897B),
+                        disabledBackgroundColor: Colors.grey[400],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child:
+                          _isLoading
+                              ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Text(
+                                'Kirim ke Auditor',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
                               ),
-                              strokeWidth: 2,
-                            ),
-                          )
-                          : const Text(
-                            'Kirim ke Pengkodean',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // ✅ ADD: Success message footer
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00897B).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      color: Color(0xFF00897B),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Data pasien berhasil disimpan dan dalam antrian auditor',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+
               const SizedBox(height: 24),
             ],
           ),
