@@ -37,7 +37,13 @@ class Patient {
 
   // Calculate age
   int get age {
-    return DateTime.now().year - birthDate.year;
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+    if (now.month < birthDate.month ||
+        (now.month == birthDate.month && now.day < birthDate.day)) {
+      age--;
+    }
+    return age;
   }
 
   // To Firestore
@@ -62,19 +68,12 @@ class Patient {
   factory Patient.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
-    // ✅ Helper to safely parse ServiceType
     ServiceType _parseServiceType(String? value) {
       if (value == null || value.isEmpty) return ServiceType.rajal;
-
-      final normalized = value.toLowerCase();
-      try {
-        return ServiceType.values.firstWhere(
-          (e) => e.name == normalized,
-          orElse: () => ServiceType.rajal,
-        );
-      } catch (e) {
-        return ServiceType.rajal; // ← Default fallback
-      }
+      return ServiceType.values.firstWhere(
+        (e) => e.name == value.toLowerCase(),
+        orElse: () => ServiceType.rajal,
+      );
     }
 
     return Patient(
@@ -82,14 +81,16 @@ class Patient {
       rmNumber: data['rmNumber'] ?? '',
       name: data['name'] ?? '',
       nik: data['nik'] ?? '',
-      birthDate: (data['birthDate'] as Timestamp).toDate(),
+      birthDate:
+          (data['dateOfBirth'] as Timestamp?)?.toDate() ?? DateTime(1900),
       gender: data['gender'] ?? '',
       address: data['address'] ?? '',
       phone: data['phone'] ?? '',
       education: data['education'] ?? '',
       insurance: data['insurance'] ?? '',
-      serviceType: _parseServiceType(data['serviceType'] as String?),
-      registrationDate: (data['registrationDate'] as Timestamp).toDate(),
+      serviceType: _parseServiceType(data['serviceType']),
+      registrationDate:
+          (data['registrationDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       status: data['status'] ?? 'active',
     );
   }

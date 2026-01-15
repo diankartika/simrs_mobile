@@ -100,6 +100,7 @@ class QueueService {
     return _firestore
         .collection('queues')
         .where('currentQueue', isEqualTo: 'rme')
+        .where('completedAt', isEqualTo: null)
         .orderBy('createdAt', descending: false)
         .snapshots()
         .map(

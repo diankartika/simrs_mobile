@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/patient_models.dart';
+import '../../services/queue_service.dart';
 
 class RegistrasiPasien extends StatefulWidget {
   const RegistrasiPasien({super.key});
@@ -30,12 +31,11 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
   // State variables
   String _jenisKelamin = 'Pilih';
   String _asuransi = 'Pilih Asuransi';
-  DateTime _tanggalLahir = DateTime.now();
+  DateTime? _tanggalLahir;
   String _serviceType = 'Rawat Jalan';
   String _selectedServiceTypeLama = 'Rawat Jalan'; // ✅ ADD: For pasien lama
 
   bool _isLoading = false;
-  bool _showSuccess = false;
 
   // Pasien Lama state
   Patient? _foundPatient;
@@ -83,9 +83,14 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
       if (queryByRM.docs.isNotEmpty) {
         setState(() {
           _foundPatient = Patient.fromFirestore(queryByRM.docs.first);
-          // ✅ FIX: Cast serviceType to String with .toString()
+
+          // Convert enum ServiceType → String untuk dropdown UI
           _selectedServiceTypeLama =
-              (_foundPatient?.serviceType?.toString() ?? 'Rawat Jalan');
+              _foundPatient!.serviceType == ServiceType.ranap
+                  ? 'Rawat Inap'
+                  : _foundPatient!.serviceType == ServiceType.igd
+                  ? 'IGD'
+                  : 'Rawat Jalan';
         });
         return;
       }
@@ -99,12 +104,18 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
       if (queryByNIK.docs.isNotEmpty) {
         setState(() {
           _foundPatient = Patient.fromFirestore(queryByNIK.docs.first);
-          // ✅ FIX: Cast serviceType to String with .toString()
+
+          // Convert enum ServiceType → label UI
           _selectedServiceTypeLama =
-              (_foundPatient?.serviceType?.toString() ?? 'Rawat Jalan');
+              _foundPatient!.serviceType == ServiceType.ranap
+                  ? 'Rawat Inap'
+                  : _foundPatient!.serviceType == ServiceType.igd
+                  ? 'IGD'
+                  : 'Rawat Jalan';
         });
       } else {
         setState(() => _foundPatient = null);
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Pasien tidak ditemukan')),
@@ -124,7 +135,7 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
     }
   }
 
-  // SUBMIT PASIEN LAMA (Send to queue)
+  //Submit pasien lama
   Future<void> _submitPasienLama() async {
     if (_foundPatient == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +144,6 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
       return;
     }
 
-    // ✅ ADD: Validate asuransi
     if (_asuransi == 'Pilih Asuransi') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Pilih asuransi terlebih dahulu')),
@@ -144,27 +154,13 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
     setState(() => _isLoading = true);
 
     try {
-      // Create queue item untuk dokter
-      final queueData = {
-        'patientId': _foundPatient!.id,
-        'rmNumber': _foundPatient!.rmNumber,
-        'patientName': _foundPatient!.name,
-        'queue': 'rme',
-        'status': 'pending',
-        'createdAt': Timestamp.now(),
-        'metadata': {
-          'serviceType':
-              _selectedServiceTypeLama, // ✅ USE: State variable bukan property
-          'asuransi': _asuransi, // ✅ ADD: Include asuransi
-        },
-      };
-
-      // Save to queue
-      await FirebaseFirestore.instance.collection('queue').add(queueData);
+      await QueueService().createQueueItem(
+        patientId: _foundPatient!.id,
+        patientName: _foundPatient!.name,
+        rmNumber: _foundPatient!.rmNumber,
+      );
 
       if (mounted) {
-        setState(() => _showSuccess = true);
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Pasien berhasil masuk antrian dokter'),
@@ -172,25 +168,20 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
           ),
         );
 
-        // Reset form
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            _searchCtrl.clear();
-            setState(() {
-              _foundPatient = null;
-              _hasSearched = false;
-              _showSuccess = false;
-              _selectedServiceTypeLama = 'Rawat Jalan';
-              _asuransi = 'Pilih Asuransi'; // ✅ ADD: Reset asuransi
-            });
-          }
+        _searchCtrl.clear();
+        setState(() {
+          _foundPatient = null;
+          _hasSearched = false;
+          _selectedServiceTypeLama = 'Rawat Jalan';
+          _asuransi = 'Pilih Asuransi';
         });
       }
     } catch (e) {
+      debugPrint('ERROR PASIEN LAMA: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Terjadi kesalahan saat menyimpan'),
+            content: Text('Gagal memasukkan pasien ke antrian'),
             backgroundColor: Colors.red,
           ),
         );
@@ -200,97 +191,67 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
     }
   }
 
-  // SUBMIT PASIEN BARU
+  //submit pasien baru
   Future<void> _submitPasienBaru() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_jenisKelamin == 'Pilih') {
+
+    if (_jenisKelamin == 'Pilih' || _asuransi == 'Pilih Asuransi') {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Pilih jenis kelamin')));
+      ).showSnackBar(const SnackBar(content: Text('Lengkapi data pasien')));
       return;
     }
-    if (_asuransi == 'Pilih Asuransi') {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Pilih asuransi')));
+
+    if (_tanggalLahir == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tanggal lahir wajib diisi')),
+      );
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // Generate RM Number
       final rmNumber =
           'RM-${DateTime.now().year}-${DateTime.now().millisecondsSinceEpoch % 10000}';
 
-      // Create patient
-      final patientData = {
-        'rmNumber': rmNumber,
-        'nik': _nikCtrl.text,
-        'name': _namaCtrl.text,
-        'gender': _jenisKelamin,
-        'dateOfBirth': _tanggalLahir,
-        'address': _alamatCtrl.text,
-        'phone': _telpCtrl.text,
-        'insurance': _asuransi,
-        'serviceType': _serviceType, // ✅ USE: State variable
-        'status': 'active',
-        'registrationDate': Timestamp.now(),
-      };
-
-      // Save patient
       final patientDoc = await FirebaseFirestore.instance
           .collection('patients')
-          .add(patientData);
+          .add({
+            'rmNumber': rmNumber,
+            'nik': _nikCtrl.text.trim(),
+            'name': _namaCtrl.text.trim(),
+            'gender': _jenisKelamin,
+            'dateOfBirth': Timestamp.fromDate(_tanggalLahir!),
+            'address': _alamatCtrl.text.trim(),
+            'phone': _telpCtrl.text.trim(),
+            'insurance': _asuransi,
+            'serviceType': _serviceType,
+            'status': 'active',
+            'registrationDate': Timestamp.now(),
+          });
 
-      // Create queue item untuk dokter
-      final queueData = {
-        'patientId': patientDoc.id,
-        'rmNumber': rmNumber,
-        'patientName': _namaCtrl.text,
-        'queue': 'rme',
-        'status': 'pending',
-        'createdAt': Timestamp.now(),
-        'metadata': {
-          'serviceType': _serviceType, // ✅ USE: State variable
-        },
-      };
-
-      await FirebaseFirestore.instance.collection('queue').add(queueData);
+      // 🔥 SATU-SATUNYA CARA MASUK QUEUE
+      await QueueService().createQueueItem(
+        patientId: patientDoc.id,
+        patientName: _namaCtrl.text.trim(),
+        rmNumber: rmNumber,
+      );
 
       if (mounted) {
-        setState(() => _showSuccess = true);
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Pasien berhasil didaftarkan'),
+            content: Text('Pasien berhasil didaftarkan & masuk antrian dokter'),
             backgroundColor: Color(0xFF00897B),
           ),
         );
-
-        // Reset form
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            _formKey.currentState!.reset();
-            setState(() {
-              _jenisKelamin = 'Pilih';
-              _asuransi = 'Pilih Asuransi';
-              _tanggalLahir = DateTime.now();
-              _serviceType = 'Rawat Jalan';
-              _showSuccess = false;
-            });
-            _namaCtrl.clear();
-            _nikCtrl.clear();
-            _alamatCtrl.clear();
-            _telpCtrl.clear();
-          }
-        });
       }
     } catch (e) {
+      debugPrint('ERROR PASIEN BARU: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Terjadi kesalahan saat menyimpan'),
+            content: Text('Gagal menyimpan data pasien'),
             backgroundColor: Colors.red,
           ),
         );
@@ -574,7 +535,9 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${_tanggalLahir.day}/${_tanggalLahir.month}/${_tanggalLahir.year}',
+                      _tanggalLahir == null
+                          ? 'Pilih tanggal lahir'
+                          : '${_tanggalLahir!.day}/${_tanggalLahir!.month}/${_tanggalLahir!.year}',
                       style: const TextStyle(fontSize: 13),
                     ),
                     const Icon(Icons.calendar_today, size: 18),
@@ -906,7 +869,7 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
             ),
 
             // SUCCESS MESSAGE
-            if (_showSuccess)
+            if (_foundPatient != null)
               Padding(
                 padding: const EdgeInsets.only(top: 16),
                 child: Container(
@@ -926,7 +889,7 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
                       const SizedBox(width: 12),
                       const Expanded(
                         child: Text(
-                          'Pasien berhasil masuk antrian dokter',
+                          'Pasien ditemukan',
                           style: TextStyle(fontSize: 12, color: Colors.black87),
                         ),
                       ),
@@ -934,15 +897,15 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
                   ),
                 ),
               ),
-          ] else if (_hasSearched && _foundPatient == null)
+          ] else
             Center(
               child: Column(
                 children: [
-                  Icon(Icons.person_off, size: 48, color: Colors.grey[400]),
+                  Icon(Icons.person_off, size: 48, color: Colors.grey),
                   const SizedBox(height: 12),
-                  Text(
+                  const Text(
                     'Pasien tidak ditemukan',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 14),
                   ),
                 ],
               ),
