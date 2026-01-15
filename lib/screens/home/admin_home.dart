@@ -1,5 +1,5 @@
-// lib/screens/home/admin_home.dart - COMPLETE ADMIN DASHBOARD (5 TABS)
-// Tabs: Home, RME, Pengkodean ICD, Audit, Profile
+// lib/screens/home/admin_home.dart - FIXED: "Halo Admin!" stays in home tab only
+// 5 tabs: Home (with greeting), RME, Pengkodean, Audit, Profile
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -32,40 +32,42 @@ class _AdminHomeState extends State<AdminHome> {
       onWillPop: () async => false,
       child: Scaffold(
         backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: const Text(
-            'Halo Admin!',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: SizedBox.shrink(),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFF00897B),
-                ),
-                child: const Icon(
-                  Icons.favorite,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-            ),
-          ],
-        ),
-        // ✅ FIX: Handle 5 tabs properly
+        // ✅ ONLY show AppBar with "Halo Admin!" on home tab
+        appBar:
+            _currentNavIndex == 0
+                ? AppBar(
+                  title: const Text(
+                    'Halo Admin!',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  backgroundColor: Colors.white,
+                  elevation: 0,
+                  leading: SizedBox.shrink(),
+                  actions: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF00897B),
+                        ),
+                        child: const Icon(
+                          Icons.favorite,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+                : null,
         body: _buildBody(),
-        // ✅ FIX: 5 tabs (Home, RME, Coding, Audit, Profile)
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentNavIndex,
           type: BottomNavigationBarType.fixed,
@@ -98,7 +100,7 @@ class _AdminHomeState extends State<AdminHome> {
     );
   }
 
-  // ✅ FIX: Handle all 5 tabs
+  // ✅ FIX: Handle all 5 tabs properly
   Widget _buildBody() {
     switch (_currentNavIndex) {
       case 0:
@@ -116,7 +118,7 @@ class _AdminHomeState extends State<AdminHome> {
     }
   }
 
-  // Tab 0: HOME - Menu Dashboard
+  // Tab 0: HOME - Menu Dashboard (with "Halo Admin!" greeting)
   Widget _buildAdminHome() {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
