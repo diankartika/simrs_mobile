@@ -163,6 +163,7 @@ class _PengkodeanFormState extends State<PengkodeanForm> {
       await HistoryService.add(
         patientId: widget.patient.id,
         patientName: widget.patient.name,
+        rmNumber: widget.patient.rmNumber,
         role: 'coder',
         action: 'Pengkodean Medis (ICD → SNOMED)',
         status: 'submitted',

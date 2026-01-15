@@ -1,18 +1,15 @@
-// lib/screens/home/audit_form.dart
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/patient_models.dart';
-import '../../services/queue_service.dart';
 import '../../services/history_service.dart';
 
 class AuditFormScreen extends StatefulWidget {
-  final QueueItem queueItem;
+  final String codingFormId;
   final Patient patient;
 
   const AuditFormScreen({
     super.key,
-    required this.queueItem,
+    required this.codingFormId,
     required this.patient,
   });
 
@@ -21,378 +18,246 @@ class AuditFormScreen extends StatefulWidget {
 }
 
 class _AuditFormScreenState extends State<AuditFormScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _notesCtrl = TextEditingController();
+  bool _isLoading = true;
+  bool _isSubmitting = false;
 
+  Map<String, dynamic>? _codingData;
   late List<AuditChecklist> _checklist;
-  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _checklist = getDefaultAuditChecklist();
+    _loadCodingForm();
   }
 
-  @override
-  void dispose() {
-    _notesCtrl.dispose();
-    super.dispose();
+  Future<void> _loadCodingForm() async {
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('coding_forms')
+            .doc(widget.codingFormId)
+            .get();
+
+    if (doc.exists && mounted) {
+      setState(() {
+        _codingData = doc.data();
+        _isLoading = false;
+      });
+    }
   }
 
-  bool get _isComplete => _checklist.every((item) => item.isChecked);
+  bool get _isComplete => _checklist.every((c) => c.isChecked);
 
-  Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
+  // ================= SUBMIT =================
 
-    setState(() => _isLoading = true);
+  Future<void> _submitAudit() async {
+    setState(() => _isSubmitting = true);
 
     try {
-      final auditFormData = {
-        'queueItemId': widget.queueItem.id,
-        'patientId': widget.patient.id,
-        'patientName': widget.patient.name,
-        'checklist': _checklist.map((c) => c.toMap()).toList(),
-        'notes': _notesCtrl.text,
-        'auditorName': 'Auditor HIM',
-        'createdAt': Timestamp.now(),
-        'status': _isComplete ? 'completed' : 'incomplete',
-      };
-
       await FirebaseFirestore.instance
-          .collection('audit_forms')
-          .add(auditFormData);
+          .collection('coding_forms')
+          .doc(widget.codingFormId)
+          .update({
+            'audit': {
+              'checklist': _checklist.map((e) => e.toMap()).toList(),
+              'auditedAt': Timestamp.now(),
+              'auditor': 'Auditor HIM',
+            },
+            'status': _isComplete ? 'approved' : 'revision',
+          });
 
-      // ✅ WAJIB: ADD HISTORY (PAKAI SERVICE)
       await HistoryService.add(
         patientId: widget.patient.id,
         patientName: widget.patient.name,
+        rmNumber: widget.patient.rmNumber,
         role: 'auditor',
-        action: 'Validasi & Finalisasi Rekam Medis',
-        status: 'approved',
+        action:
+            _isComplete
+                ? 'Audit Pengkodean - Approved'
+                : 'Audit Pengkodean - Revision',
+        status: _isComplete ? 'approved' : 'revision',
       );
 
-      // Complete queue
-      await QueueService().completeQueueItem(widget.queueItem.id);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Audit berhasil disimpan. Data selesai diproses!'),
-            backgroundColor: Color(0xFF00897B),
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isComplete
+                ? 'Audit selesai & dokumen disetujui'
+                : 'Audit selesai, perlu revisi coder',
           ),
-        );
-        Navigator.pop(context);
-      }
+          backgroundColor: const Color(0xFF00897B),
+        ),
+      );
+      Navigator.pop(context);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan audit: $e')));
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
+
+  // ================= UI =================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
-          'Audit Rekam Medis',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
+          'Audit Pengkodean Medis',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // PATIENT INFO
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF00897B), width: 2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoRow('No. RM Pasien', widget.patient.rmNumber),
-                    _buildInfoRow('Nama Pasien', widget.patient.name),
-                    _buildInfoRow(
-                      'Tgl. Encounter',
-                      '${DateTime.now().day} ${_getMonthName(DateTime.now().month)} ${DateTime.now().year}',
-                    ),
-                    _buildInfoRow('Status Dokumen', 'Lengkap'),
+                    _patientCard(),
+                    const SizedBox(height: 24),
+                    _codingReadOnlyCard(),
+                    const SizedBox(height: 24),
+                    _checklistSection(),
+                    const SizedBox(height: 32),
+                    _submitButton(),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // CHECKLIST KELENGKAPAN
-              const Text(
-                'Checklist Kelengkapan Dokumen',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE0E0E0)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: [
-                    for (int i = 0; i < _checklist.length; i++)
-                      Column(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _checklist[i].isChecked =
-                                    !_checklist[i].isChecked;
-                              });
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: Row(
-                                children: [
-                                  Checkbox(
-                                    value: _checklist[i].isChecked,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _checklist[i].isChecked =
-                                            value ?? false;
-                                      });
-                                    },
-                                    fillColor: WidgetStateProperty.all(
-                                      _checklist[i].isChecked
-                                          ? const Color(0xFF00897B)
-                                          : Colors.grey[300],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _checklist[i].item,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.black87,
-                                        decoration:
-                                            _checklist[i].isChecked
-                                                ? TextDecoration.lineThrough
-                                                : TextDecoration.none,
-                                      ),
-                                    ),
-                                  ),
-                                  Icon(
-                                    _checklist[i].isChecked
-                                        ? Icons.check_circle
-                                        : Icons.circle_outlined,
-                                    color:
-                                        _checklist[i].isChecked
-                                            ? const Color(0xFF00897B)
-                                            : Colors.grey[400],
-                                    size: 20,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          if (i < _checklist.length - 1)
-                            Divider(height: 0, color: Colors.grey[300]),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // COMPLETION STATUS
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _isComplete ? Colors.green[50] : Colors.orange[50],
-                  border: Border.all(
-                    color: _isComplete ? Colors.green : Colors.orange,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _isComplete ? Icons.check_circle : Icons.info_outline,
-                      color: _isComplete ? Colors.green : Colors.orange,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _isComplete
-                            ? 'Semua dokumen lengkap ✓'
-                            : 'Masih ada dokumen yang belum lengkap',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _isComplete ? Colors.green : Colors.orange,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // CATATAN AUDIT
-              const Text(
-                'Catatan Audit',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _notesCtrl,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Masukkan catatan audit (opsional)',
-                  filled: true,
-                  fillColor: const Color(0xFFF5F5F5),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // SUBMIT BUTTON
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: (_isLoading || !_isComplete) ? null : _submitForm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00897B),
-                    disabledBackgroundColor: Colors.grey[400],
-                  ),
-                  child:
-                      _isLoading
-                          ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                              strokeWidth: 2,
-                            ),
-                          )
-                          : const Text(
-                            'Kirim Hasil Audit',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // SUCCESS MESSAGE
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.teal[50],
-                  border: Border.all(color: Colors.teal[200]!),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.teal[700], size: 20),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Data pasien telah selesai di audit',
-                        style: TextStyle(fontSize: 12, color: Colors.black87),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // ================= SECTIONS =================
+
+  Widget _patientCard() => _card(
+    Column(
+      children: [
+        _row('No RM', widget.patient.rmNumber),
+        _row('Nama', widget.patient.name),
+        _row('Umur', '${widget.patient.age} tahun'),
+        _row('Jenis Kelamin', widget.patient.gender),
+      ],
+    ),
+  );
+
+  Widget _codingReadOnlyCard() {
+    final coding = _codingData?['coding'];
+
+    final icd10 = coding?['icd10'];
+    final icd9cm = coding?['icd9cm'];
+
+    final snomedDx = coding?['snomedDiagnosis'];
+    final snomedProc = coding?['snomedProcedure'];
+
+    return _card(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
+          const Text(
+            'Hasil Pengkodean (Read-only)',
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
+          const SizedBox(height: 12),
+
+          // ================= DIAGNOSIS =================
+          const Text(
+            'Diagnosis',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          _codeRow('ICD-10', icd10),
+          _codeRow(
+            'SNOMED',
+            snomedDx != null
+                ? '${snomedDx['targetCode']} – ${snomedDx['targetDisplay']}'
+                : '-',
+          ),
+          if (snomedDx != null) _codeRow('Map Type', snomedDx['mapType']),
+          const Divider(),
+
+          // ================= PROCEDURE =================
+          const Text('Tindakan', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          _codeRow('ICD-9-CM', icd9cm),
+          _codeRow(
+            'SNOMED',
+            snomedProc != null
+                ? '${snomedProc['targetCode']} – ${snomedProc['targetDisplay']}'
+                : '-',
+          ),
+          if (snomedProc != null) _codeRow('Map Type', snomedProc['mapType']),
         ],
       ),
     );
   }
 
-  String _getMonthName(int month) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return months[month - 1];
-  }
+  Widget _checklistSection() => _card(
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Checklist Audit',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        ..._checklist.map(
+          (item) => CheckboxListTile(
+            value: item.isChecked,
+            onChanged: (v) => setState(() => item.isChecked = v ?? false),
+            title: Text(item.item),
+            activeColor: const Color(0xFF00897B),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _submitButton() => SizedBox(
+    width: double.infinity,
+    height: 48,
+    child: ElevatedButton(
+      onPressed: _isSubmitting ? null : _submitAudit,
+      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00897B)),
+      child:
+          _isSubmitting
+              ? const CircularProgressIndicator(color: Colors.white)
+              : Text(
+                _isComplete ? 'Setujui Dokumen' : 'Kirim Revisi',
+                style: const TextStyle(fontSize: 16),
+              ),
+    ),
+  );
+
+  // ================= UTIL =================
+
+  Widget _card(Widget child) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      border: Border.all(color: const Color(0xFF00897B)),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: child,
+  );
+
+  Widget _row(String l, String v) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [Text(l), Text(v)],
+    ),
+  );
+
+  Widget _codeRow(String label, String? value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Text(
+      '$label: ${value ?? '-'}',
+      style: const TextStyle(fontSize: 12),
+    ),
+  );
 }

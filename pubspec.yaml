@@ -27,6 +27,8 @@ dependencies:
   shared_preferences: ^2.2.0  # ← ADD THIS LINE
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+
   flutter_test:
     sdk: flutter
 
@@ -37,3 +39,9 @@ flutter:
   assets:
     - assets/images/
     - assets/images/logo.png
+    
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"
+

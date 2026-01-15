@@ -1,7 +1,3 @@
-// lib/screens/home/rme_history.dart
-// FINAL VERSION - History Log based on `histories` collection
-// Used by doctor / coder / auditor via role filter
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -24,31 +20,34 @@ class _RMEHistoryState extends State<RMEHistory> {
     super.dispose();
   }
 
-  /// 🔹 Base query for histories
+  // 🔑 QUERY STABIL (TIDAK PAKE FILTER TANGGAL DI FIRESTORE)
   Query _baseQuery() {
-    Query query = FirebaseFirestore.instance
+    return FirebaseFirestore.instance
         .collection('histories')
         .where('role', isEqualTo: widget.role)
         .orderBy('createdAt', descending: true);
-
-    if (_selectedFilter == '7hari') {
-      final sevenDaysAgo = Timestamp.fromDate(
-        DateTime.now().subtract(const Duration(days: 7)),
-      );
-      query = query.where('createdAt', isGreaterThanOrEqualTo: sevenDaysAgo);
-    } else if (_selectedFilter == '30hari') {
-      final thirtyDaysAgo = Timestamp.fromDate(
-        DateTime.now().subtract(const Duration(days: 30)),
-      );
-      query = query.where('createdAt', isGreaterThanOrEqualTo: thirtyDaysAgo);
-    }
-
-    return query;
   }
 
   String _formatDate(Timestamp ts) {
     final d = ts.toDate();
     return '${d.day}/${d.month}/${d.year}';
+  }
+
+  bool _matchDateFilter(Timestamp? ts) {
+    if (ts == null) return false;
+
+    final now = DateTime.now();
+    final date = ts.toDate();
+
+    if (_selectedFilter == '7hari') {
+      return date.isAfter(now.subtract(const Duration(days: 7)));
+    }
+
+    if (_selectedFilter == '30hari') {
+      return date.isAfter(now.subtract(const Duration(days: 30)));
+    }
+
+    return true; // semua
   }
 
   @override
@@ -83,27 +82,20 @@ class _RMEHistoryState extends State<RMEHistory> {
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
               ),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
 
-            // FILTER CHIPS
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildFilterChip('Semua', 'semua'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('7 Hari', '7hari'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('30 Hari', '30hari'),
-                ],
-              ),
+            // FILTER
+            Row(
+              children: [
+                _filterChip('Semua', 'semua'),
+                const SizedBox(width: 8),
+                _filterChip('7 Hari', '7hari'),
+                const SizedBox(width: 8),
+                _filterChip('30 Hari', '30hari'),
+              ],
             ),
             const SizedBox(height: 16),
 
@@ -129,28 +121,35 @@ class _RMEHistoryState extends State<RMEHistory> {
                 }
 
                 final search = _searchCtrl.text.toLowerCase();
-                final docs =
+
+                // 🔑 FILTER DI CLIENT (AMAN)
+                final filteredDocs =
                     snapshot.data!.docs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
+
+                      final ts = data['createdAt'] as Timestamp?;
+                      if (!_matchDateFilter(ts)) return false;
+
                       final name =
                           (data['patientName'] ?? '').toString().toLowerCase();
-                      final id =
-                          (data['patientId'] ?? '').toString().toLowerCase();
-                      return name.contains(search) || id.contains(search);
+                      final rm =
+                          (data['rmNumber'] ?? '').toString().toLowerCase();
+
+                      return name.contains(search) || rm.contains(search);
                     }).toList();
 
-                if (docs.isEmpty) {
-                  return _noSearchResult();
+                if (filteredDocs.isEmpty) {
+                  return _noResult();
                 }
 
                 return ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: docs.length,
+                  itemCount: filteredDocs.length,
                   itemBuilder: (context, index) {
-                    final data = docs[index].data() as Map<String, dynamic>;
-
-                    return _buildHistoryCard(data);
+                    final data =
+                        filteredDocs[index].data() as Map<String, dynamic>;
+                    return _historyCard(data);
                   },
                 );
               },
@@ -161,86 +160,77 @@ class _RMEHistoryState extends State<RMEHistory> {
     );
   }
 
-  // ===================== UI COMPONENTS =====================
+  // ================= UI =================
 
-  Widget _buildFilterChip(String label, String value) {
-    final isSelected = _selectedFilter == value;
+  Widget _filterChip(String label, String value) {
+    final selected = _selectedFilter == value;
     return FilterChip(
       label: Text(
         label,
         style: TextStyle(
-          color: isSelected ? Colors.white : const Color(0xFF00897B),
+          color: selected ? Colors.white : const Color(0xFF00897B),
           fontWeight: FontWeight.w600,
         ),
       ),
-      selected: isSelected,
-      onSelected: (_) {
-        setState(() => _selectedFilter = value);
-      },
-      backgroundColor: Colors.transparent,
-      side: const BorderSide(color: Color(0xFF00897B), width: 1.5),
+      selected: selected,
+      onSelected: (_) => setState(() => _selectedFilter = value),
       selectedColor: const Color(0xFF00897B),
+      backgroundColor: Colors.transparent,
+      side: const BorderSide(color: Color(0xFF00897B)),
     );
   }
 
-  Widget _buildHistoryCard(Map<String, dynamic> data) {
-    return GestureDetector(
-      onTap: () => _showDetailDialog(context, data),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: const Border(
-            left: BorderSide(color: Color(0xFF00897B), width: 4),
-          ),
-          borderRadius: BorderRadius.circular(8),
-          color: const Color(0xFF00897B).withValues(alpha: 0.05),
+  Widget _historyCard(Map<String, dynamic> data) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: const Border(
+          left: BorderSide(color: Color(0xFF00897B), width: 4),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    data['patientName'] ?? '-',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF00897B),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'RM: ${data['patientId'] ?? '-'}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    data['action'] ?? '-',
-                    style: const TextStyle(fontSize: 12, color: Colors.black87),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFF00897B).withValues(alpha: 0.05),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Chip(
-                  label: Text(
-                    data['status'] ?? '-',
-                    style: const TextStyle(fontSize: 11),
+                Text(
+                  data['patientName'] ?? '-',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF00897B),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _formatDate(data['createdAt']),
-                  style: const TextStyle(fontSize: 11, color: Colors.black54),
+                  'Aksi: ${data['action'] ?? '-'}',
+                  style: const TextStyle(fontSize: 12),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Chip(
+                label: Text(
+                  data['status'] ?? '-',
+                  style: const TextStyle(fontSize: 11),
+                ),
+              ),
+              const SizedBox(height: 4),
+              if (data['createdAt'] != null)
+                Text(
+                  _formatDate(data['createdAt']),
+                  style: const TextStyle(fontSize: 11, color: Colors.black54),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -261,84 +251,12 @@ class _RMEHistoryState extends State<RMEHistory> {
     );
   }
 
-  Widget _noSearchResult() {
+  Widget _noResult() {
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Text(
-        'Tidak ada hasil pencarian',
+        'Tidak ada hasil',
         style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-      ),
-    );
-  }
-
-  // ===================== DETAIL DIALOG =====================
-
-  void _showDetailDialog(BuildContext context, Map<String, dynamic> data) {
-    showDialog(
-      context: context,
-      builder: (_) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Detail Aktivitas',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                _detailRow('Nama Pasien', data['patientName']),
-                _detailRow('No. RM', data['patientId']),
-                _detailRow('Aksi', data['action']),
-                _detailRow('Status', data['status']),
-                _detailRow('Tanggal', _formatDate(data['createdAt'])),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00897B),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text(
-                      'Tutup',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _detailRow(String label, dynamic value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value?.toString() ?? '-',
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
       ),
     );
   }

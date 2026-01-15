@@ -58,6 +58,7 @@ class _RMEFormState extends State<RMEForm> {
       await HistoryService.add(
         patientId: widget.patient.id,
         patientName: widget.patient.name,
+        rmNumber: widget.patient.rmNumber, // 🔑 WAJIB
         role: 'doctor',
         action: 'Mengisi Rekam Medis Elektronik',
         status: 'completed',

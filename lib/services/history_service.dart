@@ -6,6 +6,7 @@ class HistoryService {
   static Future<void> add({
     required String patientId,
     required String patientName,
+    required String rmNumber, // ✅ WAJIB ADA
     required String role,
     required String action,
     required String status,
@@ -13,6 +14,7 @@ class HistoryService {
     await _db.collection('histories').add({
       'patientId': patientId,
       'patientName': patientName,
+      'rmNumber': rmNumber, // ✅ DISIMPAN
       'role': role,
       'action': action,
       'status': status,
