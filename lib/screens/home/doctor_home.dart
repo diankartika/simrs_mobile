@@ -1,6 +1,4 @@
 // lib/screens/home/doctor_home.dart
-// Updated to match exact UI design
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -46,51 +44,64 @@ class _DoctorHomeState extends State<DoctorHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          'Halo Dokter!',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFF00897B),
-              ),
-              child: const Icon(Icons.favorite, color: Colors.white, size: 20),
+        appBar: AppBar(
+          title: const Text(
+            'Halo Dokter!',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
             ),
           ),
-        ],
-      ),
-      body:
-          _currentNavIndex == 0
-              ? _buildDoctorHome(context)
-              : const ProfileScreen(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentNavIndex,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF00897B),
-        unselectedItemColor: Colors.grey[400],
-        onTap: (index) {
-          setState(() => _currentNavIndex = index);
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: SizedBox.shrink(),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF00897B),
+                ),
+                child: const Icon(
+                  Icons.favorite,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+        ),
+        body:
+            _currentNavIndex == 0
+                ? _buildDoctorHome(context)
+                : const ProfileScreen(),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _currentNavIndex,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: const Color(0xFF00897B),
+          unselectedItemColor: Colors.grey[400],
+          onTap: (index) {
+            setState(() => _currentNavIndex = index);
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.description),
+              label: 'Records',
+            ),
+            BottomNavigationBarItem(icon: Icon(Icons.share), label: 'Share'),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          ],
+        ),
       ),
     );
   }
@@ -103,7 +114,7 @@ class _DoctorHomeState extends State<DoctorHome> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // PATIENT COUNTER - EXACT DESIGN
+              // PATIENT COUNTER
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -164,7 +175,7 @@ class _DoctorHomeState extends State<DoctorHome> {
               ),
               const SizedBox(height: 12),
 
-              // PATIENT LIST - EXACT DESIGN
+              // PATIENT LIST
               StreamBuilder<List<QueueItem>>(
                 stream: _rmeQueueStream,
                 builder: (context, snapshot) {

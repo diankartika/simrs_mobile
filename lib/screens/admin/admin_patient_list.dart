@@ -1,5 +1,7 @@
-// lib/screens/admin/admin_patient_list.dart
-// List all patients by service type
+// lib/screens/admin/admin_patient_list.dart - FIXED VERSION
+// Fixed: 2 Dart errors
+// - const_with_non_const (line 154) - BorderRadius.circular can't be const
+// - argument_type_not_assignable (line 280) - ServiceType is enum, not String
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -149,8 +151,9 @@ class _AdminPatientListState extends State<AdminPatientList> {
                           horizontal: 16,
                           vertical: 8,
                         ),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF00897B),
+                        // ✅ FIX #1: Remove const - BorderRadius.circular is not const
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00897B),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -277,7 +280,11 @@ class _AdminPatientListState extends State<AdminPatientList> {
                   _buildDetailRow('Alamat', patient.address),
                   _buildDetailRow('No. HP', patient.phone),
                   _buildDetailRow('Asuransi', patient.insurance),
-                  _buildDetailRow('Jenis Pelayanan', patient.serviceType),
+                  // ✅ FIX #2: Convert ServiceType to String
+                  _buildDetailRow(
+                    'Jenis Pelayanan',
+                    patient.serviceType.toString(), // ← Convert enum to string
+                  ),
                 ],
               ),
             ),
