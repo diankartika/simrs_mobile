@@ -17,7 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
-  UserRole _selectedRole = UserRole.doctor;
+  UserRole? _selectedRole; // ✅ Changed: nullable, starts as null (no default)
 
   @override
   void dispose() {
@@ -27,10 +27,22 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin(AuthProvider auth) async {
+    // ✅ Validate role is selected
+    if (_selectedRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pilih role/posisi terlebih dahulu'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     final success = await auth.login(
       username: _usernameCtrl.text,
       password: _passwordCtrl.text,
-      role: _selectedRole,
+      role: _selectedRole!,
     );
     if (success && mounted) {
       if (mounted) {
@@ -202,10 +214,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: const Color(0xFFE0E0E0)),
                     ),
-                    child: DropdownButton<UserRole>(
+                    child: DropdownButton<UserRole?>(
                       value: _selectedRole,
                       isExpanded: true,
                       underline: const SizedBox(),
+                      hint: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Pilih Role/Posisi',
+                          style: TextStyle(
+                            color: Color(0xFFCCCCCC),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
                       icon: const Padding(
                         padding: EdgeInsets.only(right: 12),
                         child: Icon(
@@ -263,7 +285,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 48,
                     child: ElevatedButton(
                       onPressed:
-                          auth.isLoading ? null : () => _handleLogin(auth),
+                          (auth.isLoading || _selectedRole == null)
+                              ? null
+                              : () => _handleLogin(auth),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF00897B),
                         disabledBackgroundColor: Colors.grey[400],
