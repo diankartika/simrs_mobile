@@ -133,6 +133,14 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
       return;
     }
 
+    // ✅ ADD: Validate asuransi
+    if (_asuransi == 'Pilih Asuransi') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih asuransi terlebih dahulu')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -147,6 +155,7 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
         'metadata': {
           'serviceType':
               _selectedServiceTypeLama, // ✅ USE: State variable bukan property
+          'asuransi': _asuransi, // ✅ ADD: Include asuransi
         },
       };
 
@@ -172,6 +181,7 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
               _hasSearched = false;
               _showSuccess = false;
               _selectedServiceTypeLama = 'Rawat Jalan';
+              _asuransi = 'Pilih Asuransi'; // ✅ ADD: Reset asuransi
             });
           }
         });
@@ -817,6 +827,44 @@ class _RegistrasiPasienState extends State<RegistrasiPasien>
                   ), // ✅ FIX: Assign to state
                 ),
               ],
+            ),
+            const SizedBox(height: 24),
+
+            // ASURANSI
+            const Text(
+              'Asuransi',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFE0E0E0)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: DropdownButton<String>(
+                value: _asuransi,
+                isExpanded: true,
+                underline: const SizedBox(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'Pilih Asuransi',
+                    child: Text('Pilih Asuransi'),
+                  ),
+                  DropdownMenuItem(value: 'BPJS', child: Text('BPJS')),
+                  DropdownMenuItem(value: 'Privat', child: Text('Privat')),
+                  DropdownMenuItem(value: 'Umum', child: Text('Umum')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _asuransi = value);
+                  }
+                },
+              ),
             ),
             const SizedBox(height: 24),
 
