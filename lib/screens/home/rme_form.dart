@@ -63,13 +63,6 @@ class _RMEFormState extends State<RMEForm> {
         status: 'completed',
       );
 
-      // 3️⃣ PINDAH KE CODER
-      await QueueService().moveToNextQueue(
-        queueItemId: widget.queueItem.id,
-        fromQueue: 'rme',
-        toQueue: 'coding',
-      );
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
