@@ -1,9 +1,3 @@
-// lib/screens/home/registrasi_pasien.dart - FIXED VERSION
-// Fixed: 7 Dart errors resolved
-// - assignment_to_final (line 450, 458, 464)
-// - use_build_context_synchronously (line 104)
-// - unrelated_type_equality_checks (line 448, 456, 463)
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/patient_models.dart';

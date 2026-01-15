@@ -1,6 +1,4 @@
-// lib/screens/home/rme_form.dart - UI MATCH WITH SCREENSHOTS
-// Fixed: All labels match UI, button says "Kirim ke Auditor"
-
+// lib/screens/home/rme_form.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/patient_models.dart';
@@ -35,13 +33,15 @@ class _RMEFormState extends State<RMEForm> {
     super.dispose();
   }
 
+  // ================= SUBMIT RME =================
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final rmeFormData = {
+      // 1️⃣ SAVE RME
+      await FirebaseFirestore.instance.collection('rme_forms').add({
         'queueItemId': widget.queueItem.id,
         'patientId': widget.patient.id,
         'patientName': widget.patient.name,
@@ -52,11 +52,9 @@ class _RMEFormState extends State<RMEForm> {
         'doctorName': 'Dokter',
         'createdAt': Timestamp.now(),
         'status': 'completed',
-      };
+      });
 
-      await FirebaseFirestore.instance.collection('rme_forms').add(rmeFormData);
-
-      // ✅ ADD HISTORY (INI KUNCI)
+      // 2️⃣ HISTORY
       await HistoryService.add(
         patientId: widget.patient.id,
         patientName: widget.patient.name,
@@ -65,20 +63,20 @@ class _RMEFormState extends State<RMEForm> {
         status: 'completed',
       );
 
+      // 3️⃣ PINDAH KE CODER
       await QueueService().moveToNextQueue(
         queueItemId: widget.queueItem.id,
         fromQueue: 'rme',
-        toQueue: 'audit',
+        toQueue: 'coding',
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Data pasien berhasil disimpan dan dalam antrian audit',
+              'Data pasien berhasil disimpan dan masuk antrian coder',
             ),
             backgroundColor: Color(0xFF00897B),
-            duration: Duration(seconds: 2),
           ),
         );
         Navigator.pop(context);
@@ -87,9 +85,8 @@ class _RMEFormState extends State<RMEForm> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Terjadi kesalahan saat menyimpan data'),
+            content: Text('Terjadi kesalahan saat menyimpan RME'),
             backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
           ),
         );
       }
@@ -100,24 +97,15 @@ class _RMEFormState extends State<RMEForm> {
     }
   }
 
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Rekam Medis Elektronik',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
+        title: const Text('Rekam Medis Elektronik'),
         backgroundColor: Colors.white,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -126,310 +114,14 @@ class _RMEFormState extends State<RMEForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // PATIENT INFO
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF00897B), width: 2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildInfoRow('No. RM Pasien', widget.patient.rmNumber),
-                    _buildInfoRow('Nama Pasien', widget.patient.name),
-                    _buildInfoRow('Jenis Kelamin', widget.patient.gender),
-                    _buildInfoRow('Usia', '${widget.patient.age} Tahun'),
-                  ],
-                ),
-              ),
+              _patientInfo(),
               const SizedBox(height: 24),
-
-              // ✅ FIX: "Anamnesis & Fisik" section header
-              const Text(
-                'Anamnesis & Fisik',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // KELUHAN UTAMA
-              const Text(
-                'Keluhan Utama',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _keluhanCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Masukkan keluhan utama pasien',
-                  filled: true,
-                  fillColor: const Color(0xFFF5F5F5),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Keluhan utama harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // RIWAYAT PENYAKIT - ✅ FIX: Label updated
-              const Text(
-                'Riwayat Penyakit',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey,
-                ),
-              ),
-              const Text(
-                'Riwayat Penyakit Sekarang/Dulu',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _riwayatCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Masukkan riwayat penyakit pasien',
-                  filled: true,
-                  fillColor: const Color(0xFFF5F5F5),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Riwayat penyakit harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // DIAGNOSIS KLINIS - ✅ FIX: Label updated to "(Awal)"
-              const Text(
-                'Diagnosis Klinis (Awal)',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey,
-                ),
-              ),
-              const Text(
-                'Diagnosis Dokter',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _diagnosisCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Masukkan diagnosis klinis',
-                  filled: true,
-                  fillColor: const Color(0xFFF5F5F5),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Diagnosis klinis harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // RENCANA TATALAKSANA - ✅ FIX: Labels updated
-              const Text(
-                'Rencana Tatalaksana',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey,
-                ),
-              ),
-              const Text(
-                'Terapi/Tindakan',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _terapiCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Masukkan rencana tatalaksana atau terapi',
-                  filled: true,
-                  fillColor: const Color(0xFFF5F5F5),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Terapi harus diisi';
-                  }
-                  return null;
-                },
-              ),
+              _inputField('Keluhan Utama', _keluhanCtrl),
+              _inputField('Riwayat Penyakit', _riwayatCtrl),
+              _inputField('Diagnosis Dokter', _diagnosisCtrl),
+              _inputField('Terapi / Tindakan', _terapiCtrl),
               const SizedBox(height: 32),
-
-              // ✅ FIX: Two buttons - Kembali & Kirim ke Auditor
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(
-                          color: Color(0xFF00897B),
-                          width: 2,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text(
-                        'Kembali',
-                        style: TextStyle(
-                          color: Color(0xFF00897B),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _submitForm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00897B),
-                        disabledBackgroundColor: Colors.grey[400],
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child:
-                          _isLoading
-                              ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : const Text(
-                                'Kirim ke Auditor',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // ✅ ADD: Success message footer
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF00897B).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.check_circle,
-                      color: Color(0xFF00897B),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Data pasien berhasil disimpan dan dalam antrian auditor',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
+              _submitButton(),
             ],
           ),
         ),
@@ -437,7 +129,26 @@ class _RMEFormState extends State<RMEForm> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  // ================= COMPONENTS =================
+  Widget _patientInfo() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFF00897B), width: 2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          _infoRow('No RM', widget.patient.rmNumber),
+          _infoRow('Nama', widget.patient.name),
+          _infoRow('JK', widget.patient.gender),
+          _infoRow('Usia', '${widget.patient.age} Tahun'),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -446,13 +157,51 @@ class _RMEFormState extends State<RMEForm> {
           Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _inputField(String label, TextEditingController controller) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            filled: true,
+            fillColor: Color(0xFFF5F5F5),
+            border: OutlineInputBorder(),
+          ),
+          validator:
+              (v) => v == null || v.isEmpty ? '$label wajib diisi' : null,
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _submitButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _submitForm,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF00897B),
+        ),
+        child:
+            _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text('Kirim ke Coder'),
       ),
     );
   }

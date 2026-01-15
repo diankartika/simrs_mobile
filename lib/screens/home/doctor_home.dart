@@ -1,8 +1,4 @@
 // lib/screens/home/doctor_home.dart - WITH PATIENT COUNTER
-// Home: Show RME Queue with patient count
-// History: Show completed RMEs
-// RMEForm only opens FROM Home with patient data
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -233,11 +229,23 @@ class _DoctorHomeState extends State<DoctorHome> {
             ),
           ),
 
-          // RME QUEUE LIST
-          const SizedBox(height: 16),
           StreamBuilder<List<QueueItem>>(
             stream: queueService.getDoctorRMEQueue(),
             builder: (context, snapshot) {
+              // 🔴 PENTING: tampilkan error Firestore kalau ada
+              if (snapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Firestore error:\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                );
+              }
+
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
                   child: CircularProgressIndicator(
@@ -254,14 +262,11 @@ class _DoctorHomeState extends State<DoctorHome> {
                     padding: const EdgeInsets.all(32),
                     child: Column(
                       children: [
-                        Icon(Icons.inbox, size: 48, color: Colors.grey[400]),
+                        Icon(Icons.inbox, size: 48, color: Colors.grey),
                         const SizedBox(height: 12),
                         Text(
                           'Tidak ada pasien yang menunggu RME',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
+                          style: TextStyle(fontSize: 14),
                         ),
                       ],
                     ),

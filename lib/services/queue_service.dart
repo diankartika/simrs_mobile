@@ -44,9 +44,10 @@ class QueueItem {
 
   factory QueueItem.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
     return QueueItem(
       id: doc.id,
-      patientId: data['patientId'] ?? '',
+      patientId: data['patientId'] ?? data['metadata']?['patientId'] ?? '',
       patientName: data['patientName'] ?? '',
       rmNumber: data['rmNumber'] ?? '',
       currentQueue: data['currentQueue'] ?? 'registration',
@@ -97,16 +98,12 @@ class QueueService {
 
   // ============ GET DOCTOR'S RME QUEUE ============
   Stream<List<QueueItem>> getDoctorRMEQueue() {
-    return _firestore
+    return FirebaseFirestore.instance
         .collection('queues')
         .where('currentQueue', isEqualTo: 'rme')
-        .where('completedAt', isEqualTo: null)
-        .orderBy('createdAt', descending: false)
+        .orderBy('createdAt')
         .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs.map((doc) => QueueItem.fromFirestore(doc)).toList(),
-        );
+        .map((s) => s.docs.map((d) => QueueItem.fromFirestore(d)).toList());
   }
 
   // ============ GET CODER'S CODING QUEUE ============
