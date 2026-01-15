@@ -97,7 +97,7 @@ class _AdminRMEHomeState extends State<AdminRMEHome> {
                     stream:
                         FirebaseFirestore.instance
                             .collection('queues')
-                            .where('status', isEqualTo: 'rme')
+                            .where('currentQueue', isEqualTo: 'rme')
                             .snapshots(),
                     builder: (context, snapshot) {
                       final count = snapshot.data?.docs.length ?? 0;
@@ -142,7 +142,7 @@ class _AdminRMEHomeState extends State<AdminRMEHome> {
               stream:
                   FirebaseFirestore.instance
                       .collection('queues')
-                      .where('status', isEqualTo: 'rme')
+                      .where('currentQueue', isEqualTo: 'rme')
                       .orderBy('createdAt', descending: true)
                       .snapshots(),
               builder: (context, snapshot) {

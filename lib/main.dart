@@ -1,5 +1,5 @@
 // lib/main.dart
-// FIXED - With proper Firestore seed initialization
+// UPDATED - With proper Firestore seed + import_service integration
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +8,7 @@ import 'models/user_model.dart';
 import 'providers/auth_provider.dart';
 import 'services/icd_database_service.dart';
 import 'services/firestore_seed_real_data.dart';
+import 'services/import_service.dart'; // ✅ ADD THIS
 import 'screens/login_screen.dart';
 import 'screens/home/admin_home.dart';
 import 'screens/home/doctor_home.dart';
@@ -20,21 +21,37 @@ void main() async {
   try {
     await Firebase.initializeApp();
   } catch (e) {
-    // Silent fail
+    debugPrint('Firebase init error: $e');
   }
 
   // Sync ICD codes to Firestore on first run
   try {
     await ICDDatabaseService().syncMockDataToFirestore();
   } catch (e) {
-    // Silent fail
+    debugPrint('ICD sync error: $e');
   }
 
   // Seed real patient data from case studies
   try {
     await FirestoreSeedRealData.seedRealData();
   } catch (e) {
-    // Silent fail
+    debugPrint('Firestore seed error: $e');
+  }
+
+  // ✅ NEW: Import 28 study case records on first launch
+  try {
+    final importService = ImportService();
+    final hasData = await importService.hasExistingData();
+
+    if (!hasData) {
+      debugPrint('📥 First launch detected - importing 28 records...');
+      await importService.importAllStudyCases();
+      debugPrint('✅ Import complete!');
+    } else {
+      debugPrint('✅ Data already exists - skipping import');
+    }
+  } catch (e) {
+    debugPrint('❌ Import service error: $e');
   }
 
   runApp(const MyApp());
