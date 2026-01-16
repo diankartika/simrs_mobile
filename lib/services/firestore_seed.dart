@@ -2,7 +2,6 @@
 // Run this ONCE to populate dummy data into Firestore
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/patient_models.dart';
 
 class FirestoreSeed {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;

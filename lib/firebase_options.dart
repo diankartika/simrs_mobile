@@ -83,4 +83,5 @@ class DefaultFirebaseOptions {
     authDomain: 'simrs-mobile-app.firebaseapp.com',
     storageBucket: 'simrs-mobile-app.firebasestorage.app',
   );
+
 }

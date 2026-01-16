@@ -1,8 +1,6 @@
 // lib/screens/home/doctor_home.dart - WITH PATIENT COUNTER
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../services/queue_service.dart';
 import '../../models/patient_models.dart';
 import '../profile_screen.dart';

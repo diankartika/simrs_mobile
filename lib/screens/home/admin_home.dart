@@ -3,10 +3,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/queue_service.dart';
-import '../../models/patient_models.dart';
 import 'registrasi_pasien.dart';
 import '../profile_screen.dart';
 import 'admin_rme_home.dart';
@@ -14,7 +12,6 @@ import 'admin_coding_home.dart';
 import 'admin_audit_home.dart';
 import 'admin_patient_list.dart';
 import 'admin_inpatient_list.dart';
-import './patient_list_universal.dart';
 
 class AdminHome extends StatefulWidget {
   const AdminHome({super.key});

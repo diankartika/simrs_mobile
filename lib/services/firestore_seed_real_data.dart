@@ -2,7 +2,6 @@
 // Real dummy data extracted from case studies (KASUS 1-30 + SNOMED-CT)
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/patient_models.dart';
 
 class FirestoreSeedRealData {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;

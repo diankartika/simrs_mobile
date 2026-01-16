@@ -15,8 +15,10 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
 
-  AuthProvider() {
-    _checkAuthStatus();
+  AuthProvider();
+
+  Future<void> init() async {
+    await _checkAuthStatus();
   }
 
   /// ✅ SIMPLE ROLE-BASED LOGIN (FOR PROTOTYPE)
