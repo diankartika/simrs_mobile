@@ -133,7 +133,7 @@ class ProfileScreen extends StatelessWidget {
                                       Navigator.pop(context);
                                       Navigator.pushReplacementNamed(
                                         context,
-                                        '/auth',
+                                        '/login',
                                       );
                                     },
                                     child: const Text(
