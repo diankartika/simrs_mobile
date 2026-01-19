@@ -1,6 +1,4 @@
-// lib/screens/login_screen.dart
-// FINAL FIX - All 3 warnings gone
-
+// lib/screens/login_screen.dart - DEBUG VERSION
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
@@ -17,7 +15,17 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
-  UserRole? _selectedRole; // ✅ Changed: nullable, starts as null (no default)
+  UserRole? _selectedRole;
+  String _debugMessage = ''; // DEBUG
+
+  @override
+  void initState() {
+    super.initState();
+    // Set default test credentials for easier testing
+    _usernameCtrl.text = 'simrs';
+    _passwordCtrl.text = '123456';
+    _debugMessage = 'Ready for login';
+  }
 
   @override
   void dispose() {
@@ -27,8 +35,17 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin(AuthProvider auth) async {
-    // ✅ Validate role is selected
+    print('🔐 DEBUG: _handleLogin called');
+    print('🔐 DEBUG: username=${_usernameCtrl.text}');
+    print('🔐 DEBUG: password=${_passwordCtrl.text}');
+    print('🔐 DEBUG: role=$_selectedRole');
+
+    setState(() => _debugMessage = '⏳ Validating...');
+
+    // Validate role is selected
     if (_selectedRole == null) {
+      print('❌ DEBUG: No role selected');
+      setState(() => _debugMessage = '❌ No role selected');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Pilih role/posisi terlebih dahulu'),
@@ -39,15 +56,27 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    print('✅ DEBUG: Role selected, calling auth.login()');
+    setState(() => _debugMessage = '📱 Logging in...');
+
     final success = await auth.login(
       username: _usernameCtrl.text,
       password: _passwordCtrl.text,
       role: _selectedRole!,
     );
+
+    print('🔐 DEBUG: Login returned success=$success');
+    print('🔐 DEBUG: isLoggedIn=${auth.isLoggedIn}');
+    print('🔐 DEBUG: currentUser=${auth.currentUser}');
+    print('🔐 DEBUG: errorMessage=${auth.errorMessage}');
+
     if (success && mounted) {
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
+      print('✅ DEBUG: Login success! Navigating to /home');
+      setState(() => _debugMessage = '✅ Login successful! Redirecting...');
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      print('❌ DEBUG: Login failed');
+      setState(() => _debugMessage = '❌ Login failed: ${auth.errorMessage}');
     }
   }
 
@@ -63,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 60),
-                  // Logo - EXACT DESIGN
+                  // Logo
                   Container(
                     width: 120,
                     height: 120,
@@ -74,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  // SIMRS Title
+                  // Title
                   const Text(
                     'SIMRS',
                     style: TextStyle(
@@ -95,6 +124,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 48),
+
+                  // 🔍 DEBUG MESSAGE
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.blue),
+                    ),
+                    child: Text(
+                      'DEBUG: $_debugMessage',
+                      style: const TextStyle(fontSize: 10, color: Colors.blue),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
                   // USERNAME FIELD
                   const Align(
@@ -196,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ROLE/POSISI DROPDOWN - YOUR DESIGN
+                  // ROLE DROPDOWN
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -279,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // LOGIN BUTTON - EXACT DESIGN
+                  // LOGIN BUTTON
                   SizedBox(
                     width: double.infinity,
                     height: 48,

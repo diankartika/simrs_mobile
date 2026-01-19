@@ -1,7 +1,7 @@
-import 'dart:async';
+// lib/screens/splash_screen.dart
 import 'package:flutter/material.dart';
-import '../services/import_service.dart';
-import '../services/firestore_seed_real_data.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -15,29 +15,30 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _initApp();
+    _checkAuthStatus();
   }
 
-  Future<void> _initApp() async {
-    try {
-      // 🔥 SEMUA LOGIC BERAT PINDAH KE SINI
-      final importService = ImportService();
-      final hasData = await importService.hasExistingData();
-
-      if (!hasData) {
-        await FirestoreSeedRealData.seedRealData();
-        await importService.importAllStudyCases();
-      }
-    } catch (e) {
-      debugPrint('Init error: $e');
-    }
+  Future<void> _checkAuthStatus() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
 
     if (!mounted) return;
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    // ✅ Get auth provider and check status
+    final auth = context.read<AuthProvider>();
+
+    // Initialize auth (check SharedPreferences for existing session)
+    await auth.init();
+
+    if (!mounted) return;
+
+    // ✅ Route based on auth status
+    if (auth.isLoggedIn) {
+      // Already logged in, go to home
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      // Not logged in, go to login
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
   @override
@@ -47,7 +48,36 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [SizedBox(height: 24), CircularProgressIndicator()],
+          children: [
+            // Logo
+            Container(
+              width: 120,
+              height: 120,
+              decoration: const BoxDecoration(shape: BoxShape.circle),
+              child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
+            ),
+            const SizedBox(height: 32),
+            // Title
+            const Text(
+              'SIMRS',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Sistem Informasi Manajemen Rumah Sakit',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 48),
+            // Loading indicator
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00897B)),
+            ),
+          ],
         ),
       ),
     );
